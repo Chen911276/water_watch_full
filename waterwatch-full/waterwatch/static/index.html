@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#173e56">
+<title>水見｜台灣水庫水情</title>
+<meta name="description" content="用清楚的數字，看見台灣水庫的每一滴變化。水利署最新水情、全台地圖、30 天趨勢與低蓄水率通知。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='%232778a1' d='M20 2C14 12 5 19 5 26a15 15 0 0030 0C35 19 26 12 20 2'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="notice" class="notice" hidden></div>
+
+<header><a class="brand" href="/" aria-label="水見首頁"><span class="logo">◒</span><strong>水見</strong><span class="brand-en">WATER WATCH</span></a>
+<nav><a href="#reservoirs" class="active">水情總覽</a><a href="#map-section">水庫地圖</a><button class="nav-button" id="nav-favs">我的關注 <span id="fav-count">0</span></button><button class="primary" id="notify-top"><span aria-hidden="true">♧</span> 設定水情通知</button></nav></header>
+
+<main>
+<section class="hero"><div class="hero-copy"><p class="eyebrow">TAIWAN RESERVOIR OBSERVATORY</p><h1>看見水情，<br>讓每一滴都有底。</h1><p class="hero-description">從北到南，一眼掌握水庫蓄水狀況。<br>關注你在意的水庫，讓重要變化主動找到你。</p><div class="live-label"><span></span> <b id="live-source">連線中</b> <i>／</i> <em id="live-desc" style="font-style:normal">經濟部水利署 開放資料</em></div></div><div class="water-art" aria-hidden="true"><div class="art-label">ISLAND OF WATER<span>23.7° N / 121.0° E</span></div><svg viewBox="0 0 650 330" fill="none"><defs><linearGradient id="lake" x1="0" y1="150" x2="600" y2="340"><stop stop-color="#9bcbd7"/><stop offset="1" stop-color="#3f85a5"/></linearGradient></defs><path d="M0 182L124 49 223 147 334 77 465 178 560 89 650 179V330H0Z" fill="#d9e5e0"/><path d="M0 220L125 112 251 230 375 136 512 244 650 157V330H0Z" fill="#b8cdd0"/><path d="M0 258L120 196 249 271 422 202 548 246 650 217V330H0Z" fill="#82adb8"/><path d="M0 275Q102 247 193 274T390 271T650 276V330H0Z" fill="url(#lake)"/><path d="M60 291H198M240 299H330M120 307H262M200 318H300" stroke="#e5f4f4" stroke-width="2" stroke-linecap="round"/><circle cx="482" cy="63" r="29" fill="#eff4ea"/><path d="M80 66H153M117 79H176" stroke="#d4e5e6" stroke-width="2"/></svg><div class="art-caption">山與水之間，讀懂日常。</div></div></section>
+
+<div class="data-line"><span id="sync-label">正在取得最新水情…</span><button id="refresh" class="text-button">↻ 重新整理</button></div>
+<div id="error" class="error" hidden role="alert"></div>
+
+<section class="stats" aria-label="水情摘要">
+  <div><span>觀測水庫／設施</span><strong id="stat-total">—</strong><small>涵蓋本次來源回傳資料</small></div>
+  <div><span>可計算蓄水率</span><strong id="stat-valid">—</strong><small>有效蓄水量 ÷ 有效容量</small></div>
+  <div class="stat-low"><span>低於 25% <b>關注門檻</b></span><strong id="stat-low">—</strong><small>僅計入時效內的完整資料</small></div>
+  <div><span>待更新或缺少資料</span><strong id="stat-stale">—</strong><small>不會觸發水情通知</small></div>
+</section>
+
+<section class="watch-section" id="attention" aria-label="需要注意的水庫">
+  <div class="section-heading"><div><p class="eyebrow">WATCH LIST</p><h2>需要注意 <span id="attention-count"></span></h2></div><p class="watch-desc">已低於 25%，或依近 7 天趨勢預估 30 天內會低於 25% 的水庫</p></div>
+  <div id="attention-list" class="watch-list" aria-live="polite"><div class="watch-empty">正在分析近 7 天趨勢…</div></div>
+</section>
+
+<section class="map-section" id="map-section">
+  <div class="section-heading"><div><p class="eyebrow">RESERVOIR MAP</p><h2>全台水庫分布 <span>點選圓點查看詳情與 30 天趨勢</span></h2></div></div>
+  <div class="map-wrap">
+    <div id="map" role="region" aria-label="全台水庫地圖"></div>
+    <div class="map-legend"><span>25% 以上<i class="ramp"></i>100%</span><span><i class="dot purple"></i>低於 25%</span><span><i class="dot gray"></i>缺值／待更新</span><span class="size">圓點大小代表有效容量 · 位置為約略座標 · 金門、馬祖為示意位置</span></div>
+  </div>
+</section>
+
+<section id="reservoirs"><div class="section-heading"><div><p class="eyebrow">RESERVOIR OVERVIEW</p><h2>水庫水情總覽 <span id="result-count"></span></h2></div><div class="view-switch"><button id="view-grid" aria-label="卡片檢視" aria-pressed="true">▦</button><button id="view-list" aria-label="列表檢視" aria-pressed="false">☰</button></div></div>
+<div class="toolbar"><div class="tabs" aria-label="地區篩選"><button data-region="全部" class="selected">全部</button><button data-region="北部">北部</button><button data-region="中部">中部</button><button data-region="南部">南部</button><button data-region="東部">東部</button><button data-region="離島">離島</button></div><div class="filter-inputs"><label class="search"><span aria-hidden="true">⌕</span><input id="search" placeholder="搜尋水庫名稱" aria-label="搜尋水庫名稱"></label><select id="sort" aria-label="排序方式"><option value="region">依地區排序</option><option value="low">蓄水率由低到高</option><option value="high">蓄水率由高到低</option><option value="name">依名稱排序</option><option value="forecast">預估最快低於 25%</option></select></div></div>
+<div class="subfilters"><div><button id="only-low" aria-pressed="false">低於 25%</button><button id="only-favs" aria-pressed="false">☆ 我的關注</button></div><span><i class="dot blue"></i> 25% 以上 <i class="dot purple"></i> 低於 25% <i class="dot gray"></i> 缺值／待更新</span></div>
+<div id="cards" class="cards" aria-live="polite"><div class="loading">正在連接水利署資料…</div></div>
+<div class="data-note"><span>ⓘ</span><p>蓄水率不等於官方水情燈號。本站以 <b>25%</b> 作為預設提醒門檻；水利署超過 36 小時沒有更新時，改以系統保存的最新一筆<b>舊資料</b>顯示並標註；舊資料與容量資料超過 7 日者不會觸發通知。攔河堰、無觀測或查無容量等算不出蓄水率的設施不列入本站。各水庫更新頻率不同，請以卡片上的觀測時間為準。依資料集要求，蓄水率不以綠、黃、橙、紅色表示。</p></div></section>
+
+<section class="notification-banner"><div class="bell-icon">♧</div><div><p class="eyebrow">STAY INFORMED</p><h2>不用一直刷新，重要水情通知你。</h2><p>選擇關注的水庫，蓄水率低於門檻時透過 Discord、Telegram 或 LINE 提醒你。</p></div><button class="primary" id="notify-bottom">設定我的通知 <span>↗</span></button></section>
+
+<footer><div class="brand small"><span class="logo">◒</span><strong>水見</strong><span>讓水情，清楚一點。</span></div><div><a href="https://data.gov.tw/dataset/45501" target="_blank" rel="noopener">水情資料來源 ↗</a><a href="https://data.gov.tw/dataset/41568" target="_blank" rel="noopener">容量資料來源 ↗</a><a href="https://www.wra.gov.tw/" target="_blank" rel="noopener">官方水情公告 ↗</a></div><p>資料提供：經濟部水利署 · 政府資料開放授權條款第 1 版 · 地圖輪廓：內政部直轄市、縣市界線（經 taiwan-atlas 簡化）<br>自動觀測資料可能尚未經人工檢驗，本站僅供參考。收藏儲存在此裝置。</p></footer>
+</main>
+
+<dialog id="detail"><button class="close" aria-label="關閉詳情">×</button><div id="detail-content"></div></dialog>
+
+<dialog id="notify"><button class="close" aria-label="關閉通知設定">×</button>
+<p class="eyebrow">YOUR WATER, YOUR ALERTS</p><h2>把重要水情，送到你身邊。</h2><p class="muted">只在你同意後發送，隨時可以取消。</p>
+<div class="channels" role="radiogroup" aria-label="通知管道">
+  <button type="button" data-channel="discord" role="radio">Discord <small>確認中…</small></button>
+  <button type="button" data-channel="line" role="radio">LINE <small>確認中…</small></button>
+  <button type="button" data-channel="telegram" role="radio">Telegram <small>確認中…</small></button>
+</div>
+<p id="channel-info" class="help"></p>
+<p id="monitor-status" class="help">正在查詢背景檢查狀態…</p>
+<div id="subscription-status"></div>
+<div id="token-box"></div>
+<form id="notification-form">
+  <label class="field-label">1. 選擇要接收提醒的水庫</label><div id="reservoir-options" class="reservoir-options"></div>
+  <label class="field-label" for="target" id="target-label">2. Discord Webhook 網址</label><input id="target" type="password" autocomplete="off" required>
+  <details id="target-help"><summary></summary><p></p></details>
+  <label class="field-label" for="threshold">3. 提醒門檻</label>
+  <div class="threshold-row"><input id="threshold" type="range" min="5" max="95" step="1" value="25"><output id="threshold-out" for="threshold">25%</output></div>
+  <label class="consent"><input id="consent" type="checkbox" required><span>我同意儲存此通知目標與所選水庫，並接收測試訊息及低於門檻的水情提醒。我有權向此頻道或帳號發送訊息。</span></label>
+  <p class="help">跌破門檻時提醒一次；回升到門檻 +2% 以上後再次下降才重新提醒，同一水庫 24 小時內最多一則。缺值、過期或來源中斷時不發送。</p>
+  <button class="primary submit" type="submit">連線測試並儲存訂閱</button>
+  <p id="form-message" role="status"></p>
+</form>
+<details><summary>在其他裝置管理訂閱（輸入管理代碼）</summary><div class="restore"><input id="restore-token" placeholder="管理代碼" autocomplete="off"><button type="button" class="secondary" id="restore">載入</button></div></details>
+</dialog>
+<div id="toast" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
